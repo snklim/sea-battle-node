@@ -1,0 +1,43 @@
+version: '3'
+services:
+  web:
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./web
+    ports:
+      - 3000:3000
+    volumes:
+      - /app/node_modules
+      - ./web:/app
+  api:
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./api
+    ports:
+      - 8080:8080
+    volumes:
+      - /app/node_modules
+      - ./api:/app
+    depends_on:
+      - rabbitmq
+  nginx:
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./nginx
+    ports:
+      - 3050:80
+    depends_on:
+      - api
+      - web
+  rabbitmq:
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./rabbitmq
+    ports:
+      - 5672:5672
+  worker:
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./worker
+    depends_on:
+      - rabbitmq

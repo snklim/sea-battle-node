@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: 
+  name: web-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: web
+  template:
+    metadata:
+      labels:
+        component: web
+    spec:
+      containers:
+        - name: client
+          image: sklimecontainerregistry.azurecr.io/sea-battle-web:v4
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          ports: 
+            - containerPort: 3000
+      imagePullSecrets:
+        - name: acr-secret

@@ -1,0 +1,44 @@
+apiVersion: 2019-12-01
+location: eastus
+name: myContainerGroup
+properties:
+  containers:
+  - name: nginx
+    properties:
+      image: sklimecontainerregistry.azurecr.io/sea-battle-nginx:v1
+      resources:
+        requests:
+          cpu: 1
+          memoryInGb: 1.5
+      ports:
+      - port: 80
+  - name: web
+    properties:
+      image: sklimecontainerregistry.azurecr.io/sea-battle-web:v1
+      resources:
+        requests:
+          cpu: 1
+          memoryInGb: 1.5
+      ports:
+      - port: 3000
+  - name: api
+    properties:
+      image: sklimecontainerregistry.azurecr.io/sea-battle-api:v1
+      resources:
+        requests:
+          cpu: 1
+          memoryInGb: 1.5
+      ports:
+      - port: 8080
+  osType: Linux
+  ipAddress:
+    type: Public
+    ports:
+    - protocol: tcp
+      port: 80
+  imageRegistryCredentials:
+    - server: sklimecontainerregistry.azurecr.io
+      username: sklimecontainerregistry
+      password: jIXiRrRQuVGihHWqqtgku47Rx/SLtOOy
+tags: {exampleTag: tutorial}
+type: Microsoft.ContainerInstance/containerGroups
