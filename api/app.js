@@ -18,15 +18,18 @@ let send = task => {
     console.log(task);
 }
 
-setTimeout(() => {
+const connect = () => setTimeout(() => {
+    console.log('Connecting...')
     amqp.connect('amqp://rabbitmq', function (error0, connection) {
         if (error0) {
-            throw error0;
+            connect();
+            return;
         }
 
         connection.createChannel(function (error1, channel) {
             if (error1) {
-                throw error1;
+                connect();
+                return;
             }
 
             var queuePing = 'ping';
@@ -64,7 +67,9 @@ setTimeout(() => {
             })
         })
     })
-}, 15000)
+}, 1000);
+
+connect();
 
 webSocketServer.on('connection', ws => {
 
@@ -81,6 +86,10 @@ webSocketServer.on('connection', ws => {
         } catch (ex) {
             console.log(ex)
         }
+    })
+
+    ws.on('close', () => {
+        console.log('disconnected');
     })
 
 })

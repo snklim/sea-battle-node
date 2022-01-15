@@ -1,18 +1,28 @@
-const GamesController = require('./gamesController.js').GamesController
+const GamesController = require('./gamesController.js').GamesController;
+const mongoose = require('mongoose');
+
+mongoose.connect('mongodb://mongo:27017/games')
+    .then(() => console.log('MongoDB Connected'))
+    .catch(err => console.log(err));
 
 var amqp = require('amqplib/callback_api');
 
 const gamesController = new GamesController();
 
-setTimeout(() => {
+const connect = () => setTimeout(() => {
+
+    console.log('Connecting...')
+
     amqp.connect('amqp://rabbitmq', function (error0, connection) {
         if (error0) {
-            throw error0;
+            connect()
+            return
         }
 
         connection.createChannel(function (error1, channel) {
             if (error1) {
-                throw error1;
+                connect()
+                return
             }
 
             var queuePing = 'ping';
@@ -38,32 +48,32 @@ setTimeout(() => {
                 let sendFn = m => send(m, taskId, callback);
 
                 if (msg.event === 'start') {
-                    sendFn(gamesController.hideGame(msg.payload.id >= 0
-                        ? gamesController.getGame(msg.payload.id)
-                        : gamesController.createGame()));
+                    if (msg.payload.id) {
+                        gamesController.getGame(msg.payload.id)
+                            .then(game => sendFn(game));
+                    } else {
+                        gamesController.createGame()
+                            .then(game => sendFn(game));
+                    }
                 }
 
                 if (msg.event === 'move') {
-                    var ctx = { playerChanged: false };
-
-                    sendFn(gamesController.hideGame(gamesController.playGame(msg.payload, ctx)));
-
-                    if (ctx.playerChanged)
-                        setTimeout(() => {
-                            gamesController.playBot(msg.payload, sendFn);
-                        }, 500);
+                    gamesController.playGame(msg.payload, sendFn);
                 }
 
                 if (msg.event === 'getgames') {
                     if (msg.payload.gameid >= 0)
-                        sendFn({ games: gamesController.getGames() })
-                    else
                         sendFn({ games: gamesController.hideGame(gamesController.getGame(msg.payload.gameid)) })
+                    else
+                        gamesController.getGames().then(games => sendFn({ games }))
+
                 }
 
             }, {
                 noAck: true
             })
         })
-    })
-}, 15000)
+    });
+}, 1000);
+
+connect();

@@ -14,11 +14,12 @@ function App() {
         <div className="App">
           <header className="App-header">
             <Link to="/">Home</Link>
-            <Link to="/otherpage/-1">Other Page</Link>
+            <Link to="/otherpage">Other Page</Link>
           </header>
           <div>
             <Routes>
               <Route exact path="/" element={<OtherPage />} />
+              <Route path="/otherpage" element={<Game />} />
               <Route path="/otherpage/:id" element={<Game />} />
             </Routes>
           </div>
@@ -45,7 +46,7 @@ function OtherPage() {
   }
 
   return (<div>
-    <div className='game-select' onClick={() => onClick(-1)}>Create new game</div>
+    <div className='game-select' onClick={() => onClick('')}>Create new game</div>
     {games.map(index => (<div key={index} className='game-select' onClick={() => onClick(index)}>Play {index} game</div>))}
   </div>);
 }
@@ -55,6 +56,7 @@ function Game() {
   const params = useParams();
 
   const [fields, setFields] = useState([]);
+  const [connected, setConnected] = useState(true);
   const [message, setMessage] = useState('');
 
   const count = useSelector(state => state.value)
@@ -64,13 +66,14 @@ function Game() {
     lastJsonMessage,
     readyState
   } = useWebSocket(`ws://${window.location.host}/api`, {
-    onOpen: () => sendJsonMessage({ event: 'start', payload: { id: params.id } })
+    onOpen: () => sendJsonMessage({ event: 'start', payload: { id: params.id } }),
+    onClose: () => setConnected(false),
+    shouldReconnect: (closeEvent) => false,
   });
 
   useEffect(() => {
     if (lastJsonMessage !== null) {
       if (lastJsonMessage.event === 'update') {
-        console.log(lastJsonMessage)
         setFields(lastJsonMessage.payload.fields);
         setMessage(lastJsonMessage.payload.message);
       }
@@ -88,6 +91,7 @@ function Game() {
   return (
     <div className="game">
       <div>{count}</div>
+      <div>{connected ? 'connected' : 'disconnected'}</div>
       {fields.map((field, index) => (<Field key={index} cells={field} onClick={onClick} />))}
       <div className='clearBoth'></div>
       <div>{message}</div>

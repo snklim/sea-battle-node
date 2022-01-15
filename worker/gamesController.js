@@ -1,34 +1,35 @@
+const GamesRepository = require('./gamesRepository.js').GamesRepository
+const uuid = require('uuid')
+
 class GamesController {
 
     //
     // ctor
     //
     constructor() {
-        this.games = [];
+        this.repo = new GamesRepository();
     }
 
     //
     // get games
     //
-    getGames() {
-        return this.games.map((game, index) => index);
+    async getGames() {
+        return await this.repo.getAll();
     }
 
     //
     // get game
     //
-    getGame(index) {
-        if (0 <= index && index < this.games.length)
-            return this.games[index];
-
-        return null;
+    async getGame(index) {
+        const game = await this.repo.get(index);
+        return this.hideGame(game);
     }
 
     //
     // play bot
     //
-    playBot(move, send) {
-        let game = this.games[move.game];
+    async playBot(move, send) {
+        let game = await this.repo.get(move.game);
         let field = game[game.target];
         let cells = field.cells;
         let availableCells = [];
@@ -55,14 +56,7 @@ class GamesController {
             targetCell = newNext[Math.floor(newNext.length * Math.random())]
         }
 
-        var ctx = { playerChanged: false };
-
-        send(this.hideGame(this.playGame({ game: move.game, index: targetCell, target: 'field1' }, ctx)));
-
-        if (!ctx.playerChanged)
-            setTimeout(() => {
-                this.playBot(move, send);
-            }, 500);
+        await this.playGame({ game: move.game, index: targetCell, target: 'field1' }, send);
     }
 
     //
@@ -102,8 +96,8 @@ class GamesController {
     //
     // play game
     //
-    playGame(move, ctx) {
-        let game = this.games[move.game];
+    async playGame(move, send) {
+        let game = await this.repo.get(move.game);
         let field = game[game.target];
         let cells = field.cells;
         let cell = cells[move.index];
@@ -124,9 +118,9 @@ class GamesController {
 
             // find possible next targes as neighbors of killed cell
             [
-                { x: cell.x - 1, y: cell.y }, 
-                { x: cell.x, y: cell.y + 1 }, 
-                { x: cell.x + 1, y: cell.y }, 
+                { x: cell.x - 1, y: cell.y },
+                { x: cell.x, y: cell.y + 1 },
+                { x: cell.x + 1, y: cell.y },
                 { x: cell.x, y: cell.y - 1 }
             ].forEach(t => {
                 var target = cells.find(c => c.x === t.x && c.y === t.y);
@@ -171,36 +165,49 @@ class GamesController {
                 field.shipsAlive -= 1;
             }
         } else {
-            let target = game.target === 'field1' ? 'field2' : 'field1';
-
-            ctx.playerChanged = target !== game.target;
-
-            game.target = target;
+            game.target = game.target === 'field1' ? 'field2' : 'field1';
         }
 
-        return game;
+        if (game.target === 'field1') {
+            setTimeout(() => {
+                this.playBot(move, send)
+            }, 1000);
+        }
+
+        await this.repo.update(move.game, game)
+
+        send(this.hideGame(game));
     }
 
     //
     // create game
     //
-    createGame() {
-        let game = { field1: this.createField(), field2: this.createField(), target: 'field2' };
-        this.games.push(game);
-        return game;
+    async createGame() {
+        let id = uuid.v1();
+        let game = { field1: this.createField(id), field2: this.createField(id), target: 'field2' };
+        await this.repo.save(id, game);
+        return this.hideGame(game);
     }
 
     //
     // create field
     //
-    createField() {
+    createField(id) {
         let cells = [];
         let borders = [];
         let ships = [];
         let shipsToPlace = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1];
 
         for (let i = 0; i < 100; i++) {
-            cells.push({ game: this.games.length, border: 0, ship: 0, index: i, x: Math.floor(i / 10), y: i % 10, type: 'empty' });
+            cells.push({
+                game: id,
+                border: 0,
+                ship: 0,
+                index: i,
+                x: Math.floor(i / 10),
+                y: i % 10,
+                type: 'empty'
+            });
         }
 
         shipsToPlace.forEach(length => {
